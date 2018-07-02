@@ -24,9 +24,9 @@ function AbNumber($number, $is_weak = false)
 {
 	$number = trim($number);
 
-	if(strpos($number, "1") !== 0) continue;
+	if(strpos($number, "1") !== 0) return FALSE;
 
-	if($number < 11) continue;
+	if($number < 11) return FALSE;
 
 	$num_3 = substr($number, 3, 1);
 	$num_4 = substr($number, 4, 1);
@@ -37,12 +37,46 @@ function AbNumber($number, $is_weak = false)
 	$num_9 = substr($number, 9, 1);
 	$num_10 = substr($number, 10, 1);
 
+	//降序排列4321
 	if ($num_7 == ($num_8 + 1) && $num_8 == ($num_9 + 1) && $num_9 == ($num_10 + 1)) {
 		return $number;
 	}
 
-	if (strpos($number, '44') !== FALSE) return FALSE;
+	//升序排列1234
+	if ($num_7 == ($num_8 - 1) && $num_8 == ($num_9 - 1) && $num_9 == ($num_10 - 1)) {
+		return $number;
+	}
+
+	if ($num_4 == $num_5 && $num_4 == 6){
+		if (strpos($number, '4') !== FALSE) return FALSE;
+		return $number;
+	}
+
+    // if (strpos($number, '186') === 0) return $number;
+    // if (strpos($number, '185') === 0) return $number;
+	$num_7_10 =  substr($number, 10, 4);
+	if (strpos($num_7_10, '66') && strpos($num_7_10, '44') === FALSE) {
+		return $number;
+	}
+
+	if (strpos($num_7_10, '88') && strpos($num_7_10, '44') === FALSE) {
+		return $number;
+	}
+
+	if (strpos($num_7_10, '686') && strpos($num_7_10, '4') === FALSE) {
+		return $number;
+	}
+
+	if (strpos($num_7_10, '868') && strpos($num_7_10, '4') === FALSE) {
+		return $number;
+	}
+
+	// if (strpos($num_7_10, '55') && strpos($num_7_10, '4') === FALSE) {
+	// 	return $number;
+	// }
+
 	if (strpos($number, '4') !== FALSE) return FALSE;
+	if (strpos($number, '44') !== FALSE) return FALSE;
 
 
 	// if ($num_3 != $num_4  && $num_3 != $num_5 && $num_3 != $num_6 && $num_4 != $num_5 &&  $num_4 != $num_6 && $num_5 != $num_6) {
@@ -136,10 +170,22 @@ function isNumber($number)
 }
 
 //联通天神卡
-function getWoNumber()
+function getWoNumber($type = 1)
 {
-	$time = time() . "0" .  rand(10, 99);
-	$url = "http://m.10010.com/NumApp/NumberCenter/qryNum?callback=jsonp_queryMoreNums&provinceCode=31&cityCode=310&monthFeeLimit=0&groupKey=8300283067&searchCategory=3&net=01&amounts=200&codeTypeCode=&searchValue=&qryType=02&goodsNet=4&_=" . $time;
+	$time = time() . rand(10, 99) .  rand(10, 99);
+	switch ($type) {
+		case 1:
+			$url = "http://m.10010.com/NumApp/NumberCenter/qryNum?callback=jsonp_queryMoreNums&provinceCode=31&cityCode=310&monthFeeLimit=0&groupKey=8300283067&searchCategory=3&net=01&amounts=200&codeTypeCode=&searchValue=&qryType=02&goodsNet=4&_=";
+			break;
+		case 2:
+			$url = "http://num.10010.com/NumApp/NumberCenter/qryNum?callback=jsonp_queryMoreNums&provinceCode=31&cityCode=310&monthFeeLimit=0&groupKey=57008346&searchCategory=3&net=02&amounts=210&codeTypeCode=&searchValue=&qryType=02&_=";
+			break;
+		default:
+			$url = "http://m.10010.com/NumApp/NumberCenter/qryNum?callback=jsonp_queryMoreNums&provinceCode=31&cityCode=310&monthFeeLimit=0&groupKey=8300283067&searchCategory=3&net=01&amounts=200&codeTypeCode=&searchValue=&qryType=02&goodsNet=4&_=";
+			break;
+	}
+
+	$url .= $time;
 
 	$res = Request($url, '');
 
@@ -148,7 +194,7 @@ function getWoNumber()
 
 	$res = json_decode($res, true);
 
-	if (!$res) return FALSE;
+	if (!$res) return array();
 
 	$res = array_filter($res['numArray'], "isNumber");
 	return $res;
@@ -198,6 +244,8 @@ echo "🍺  >>> Starting Request Phone Number for 10010,11086 ...\n\n";
 $andNumbers = getAndNumber();
 $woNumbers = getWoNumber();
 
+// $woNumbers = array_merge(getWoNumber(), getWoNumber(2));
+
 $andNumbers = $andNumbers ? $andNumbers : array();
 $woNumbers = $woNumbers ? $woNumbers : array();
 
@@ -209,7 +257,8 @@ echo "🍺  >>> 10010 : " . count($woNumbers) . " Phone Number \n\n";
 
 echo "🍺  >>> Screening Phone Number ...\n\n";
 foreach ($andNumbers as $value) {
-	if (AbNumber($value)) {
+  
+	if (AbNumber($value, TRUE)) {
 		$number[] = [
 			'number' => $value,
 			'type' => "1"
@@ -218,7 +267,8 @@ foreach ($andNumbers as $value) {
 }
 
 foreach ($woNumbers as $value) {
-	if (AbNumber($value)) {
+
+    if (AbNumber($value, TRUE)) {
 		$number[] = [
 			'number' => $value,
 			'type' => "2"
@@ -230,15 +280,16 @@ $str = file_get_contents(__DIR__ . '/number.log');
 $old_numbers = explode(",",$str);
 
 $new_numbers = []; $strLog = '';
+
 foreach ($number as $value) {
 	echo "😄 Good Number: " . $value['number'];
 	echo " -> ";
-	echo $value['type'] == 1 ? "10010" : "10086";
+	echo $value['type'] == 1 ? "10086" : "10010";
 	echo "\n";
 	if (in_array($value['number'], $old_numbers)) continue;
 	echo "🌟 New Good Number: ", $value['number'];
 	echo " -> ";
-	echo $value['type'] == 1 ? "10010" : "10086";
+	echo $value['type'] == 1 ? "10086" : "10010";
 	echo "\n";
 	$strLog .= $value['number'] . ",\n";
 }
@@ -248,8 +299,3 @@ if (!$strLog) {
 
 echo "\n\n";
 file_put_contents(__DIR__ . "/number.log", $strLog, FILE_APPEND);
-
-
-
-
-
